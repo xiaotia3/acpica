@@ -228,6 +228,36 @@ typedef struct acpi_table_header
 
 /*******************************************************************************
  *
+ * Table 5 15: vTPM Secure Session Info Header.
+ *
+ ******************************************************************************/
+
+typedef struct vtpm_secure_session_info_header
+{
+    UINT16                  Version;                 /* 0x0100 */
+    UINT8                   Protocol;                /* 0x00: SPDM */
+    UINT8                   Reserved;
+    UINT32                  Length;                  /* Length of Secure Session Info Table */
+    UINT64                  Address;                 /* Address of Secure Session Info Table */
+
+} VTPM_SECURE_SESSION_INFO_HEADER;
+
+/*******************************************************************************
+ *
+ * Table 5 14: Intel TD vTPM Key ACPI Table.
+ *
+ ******************************************************************************/
+
+typedef struct acpi_table_tdtk
+{
+    ACPI_TABLE_HEADER                  Header;                            /* Common ACPI table header */
+    UINT32                             Reserved;
+    VTPM_SECURE_SESSION_INFO_HEADER    VtpmSecureSessionInfoHeader;       /* vTPM Secure Session Info Header */
+
+} ACPI_TABLE_TDTK;
+
+/*******************************************************************************
+ *
  * GAS - Generic Address Structure (ACPI 2.0+)
  *
  * Note: Since this structure is used in the ACPI tables, it is byte aligned.

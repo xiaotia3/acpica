@@ -207,6 +207,20 @@ OslGetTable (
     ACPI_TABLE_HEADER       **Table,
     ACPI_PHYSICAL_ADDRESS   *Address);
 
+static BOOLEAN
+CheckTdtkTable(
+    const ACPI_TABLE_TDTK   *tdtk);
+
+/* TDTK table check list */
+
+#define TDTK_TABLE_SIG             "TDTK"
+#define TDTK_TABLE_LEN             0x38
+#define TDTK_TABLE_REVISION        0x1
+#define TDTK_TABLE_OEM_ID          "INTEL "
+#define TDTK_TABLE_OEM_TABLE_ID    "EDK2    "
+#define TDTK_TABLE_SS_VER          0x0100
+#define TDTK_TABLE_SS_PROTOCAL     0x0
+#define TDTK_TABLE_SS_RESERVED     0x0
 
 /* File locations */
 
@@ -831,6 +845,7 @@ OslGetTable (
 {
     ACPI_TABLE_HEADER       *LocalTable = NULL;
     ACPI_TABLE_HEADER       *MappedTable = NULL;
+    ACPI_TABLE_TDTK         *MappedTdtkTable = NULL;
     UINT8                   *TableData;
     UINT8                   NumberOfTables;
     UINT8                   ItemSize;
@@ -1034,6 +1049,19 @@ ExitFindTable:
         goto Exit;
     }
 
+    if (ACPI_COMPARE_NAMESEG (MappedTable->Signature, "TDTK"))
+    {
+        MappedTdtkTable = ACPI_CAST_PTR (ACPI_TABLE_TDTK, MappedTable);
+        if (CheckTdtkTable (MappedTdtkTable))
+        {
+            printf("TDTK checks passed!\n");
+        }
+        else
+        {
+            printf("TDTK checks not passed!\n");
+        }
+    }
+
     /* Copy table to local buffer and return it */
 
     LocalTable = ACPI_ALLOCATE_ZEROED (TableLength);
@@ -1162,4 +1190,104 @@ OslUnmapTable (
     {
         AcpiOsUnmapMemory (Table, ApGetTableLength (Table));
     }
+}
+
+/******************************************************************************
+ *
+ * FUNCTION:    CheckTdtkTable
+ *
+ * PARAMETERS:  tdtk               - A pointer to the mapped tdtk table
+ *
+ * RETURN:      TRUE if TDTK table pass checks.
+ *
+ * DESCRIPTION: Check entire ACPI TDTK table.
+ *
+ *****************************************************************************/
+
+static BOOLEAN
+CheckTdtkTable (
+    const ACPI_TABLE_TDTK*  tdtk)
+{
+    UINT8                   Checksum;
+
+    /* Check Signature */
+
+    if (strncmp(tdtk->Header.Signature, TDTK_TABLE_SIG, ACPI_NAMESEG_SIZE) != 0)
+    {
+        printf(" - TDTK Signature is wrong\n");
+        return (FALSE);
+    }
+
+    /* Check Length */
+
+    if (tdtk->Header.Length != TDTK_TABLE_LEN)
+    {
+        fprintf(stdout, " - TDTK Length %u is wrong\n", tdtk->Header.Length);
+        return (FALSE);
+    }
+
+    /* Check Revision */
+
+    if (tdtk->Header.Revision != TDTK_TABLE_REVISION)
+    {
+        fprintf(stdout, " - TDTK Revision %u is wrong\n", tdtk->Header.Revision);
+        return (FALSE);
+    }
+
+    /* Calculate Checksum */
+
+    Checksum = AcpiUtChecksum ((UINT8 *) tdtk, TDTK_TABLE_LEN);
+    Checksum = (UINT8) (Checksum - tdtk->Header.Checksum);
+    Checksum = (UINT8) (0 - Checksum);
+    if (tdtk->Header.Checksum != Checksum)
+    {
+        fprintf(stdout, " - TDTK Checksum %u is wrong\n", tdtk->Header.Checksum);
+        return (FALSE);
+    }
+
+    /* Check OemId */
+
+    if (strncmp(tdtk->Header.OemId, TDTK_TABLE_OEM_ID, ACPI_OEM_ID_SIZE) != 0)
+    {
+        printf(" - TDTK OemId is wrong\n");
+        return (FALSE);
+    }
+
+    /* Check OemTableId */
+    if (strncmp(tdtk->Header.OemTableId, TDTK_TABLE_OEM_TABLE_ID, ACPI_OEM_TABLE_ID_SIZE) != 0)
+    {
+        printf(" - TDTK OemTableId is wrong\n");
+        return (FALSE);
+    }
+
+    /* Check Secure Session Info Header Version */
+
+    if (tdtk->VtpmSecureSessionInfoHeader.Version != TDTK_TABLE_SS_VER)
+    {
+        fprintf(stdout, " - TDTK VtpmSecureSessionInfoHeader Version %u is wrong\n",
+            tdtk->VtpmSecureSessionInfoHeader.Version);
+        return (FALSE);
+    }
+
+    /* Check Secure Session Info Header Protocol */
+
+    if (tdtk->VtpmSecureSessionInfoHeader.Protocol != TDTK_TABLE_SS_PROTOCAL)
+    {
+        fprintf(stdout, " - TDTK VtpmSecureSessionInfoHeader Protocol %u is wrong\n",
+            tdtk->VtpmSecureSessionInfoHeader.Protocol);
+        return (FALSE);
+    }
+
+    /* Check Secure Session Info Header Reserved */
+
+    if (tdtk->VtpmSecureSessionInfoHeader.Reserved != TDTK_TABLE_SS_RESERVED)
+    {
+        fprintf(stdout, " - TDTK VtpmSecureSessionInfoHeader Reserved %u is wrong\n",
+            tdtk->VtpmSecureSessionInfoHeader.Reserved);
+        return (FALSE);
+    }
+
+    /* All checks passed */
+
+    return (TRUE);
 }
